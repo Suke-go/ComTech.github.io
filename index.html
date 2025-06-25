@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スキマ時間クイズ - 通信工学</title>
+    <title>スキマ時間クイズ</title>
     <script>
         window.MathJax = {
             tex: {
@@ -108,10 +108,9 @@
             min-height: 60px;
         }
         
-        .choice-btn:hover {
+        .choice-btn:hover, .choice-btn.selected {
             border-color: #667eea;
-            background: #f5f5ff;
-            transform: translateX(5px);
+            background: #f0f0ff;
         }
         
         .choice-btn.correct {
@@ -148,7 +147,7 @@
             margin-top: 20px;
             font-size: 1.1rem;
             line-height: 1.8;
-            text-align: center;
+            text-align: left;
         }
         
         .next-btn {
@@ -235,14 +234,14 @@
         .subtitle {
             color: #666;
             font-size: 1.2rem;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
         }
         
         .file-options {
             margin: 30px 0;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
         
         .option-btn {
@@ -294,40 +293,27 @@
             margin: 10px;
         }
         
-        /* 数式の見た目を改善 */
-        .MathJax {
-            color: #333;
-        }
-        
-        .choice-btn .MathJax {
-            font-size: 1.2rem !important;
-        }
-        
-        .explanation .MathJax {
-            font-size: 1.2rem !important;
-            margin: 10px 0;
-        }
+        .MathJax { color: #333; }
+        .choice-btn .MathJax { font-size: 1.2rem !important; }
+        .explanation .MathJax { font-size: 1.2rem !important; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- スタート画面 -->
         <div id="start-screen" class="start-screen">
             <h1>📚 スキマ時間クイズ</h1>
-            <p class="subtitle">10分で効率的に数学を学習しよう！</p>
-            
-            <div class="file-options">
-                <button class="option-btn" onclick="loadFromGitHub()">
-                    📦 GitHub上の問題を読み込む<br>
-                    <small style="color: #666; font-size: 0.9rem;">questions.json</small>
-                </button>
-                
-                <div>
-                    <label for="file-input" class="file-label">
-                        📁 ローカルの問題ファイル（JSON）を選択
-                    </label>
-                    <input type="file" id="file-input" accept=".json">
+            <p class="subtitle">挑戦したいクイズを選択してください。</p>
+
+            <div id="quiz-selection-container" class="file-options">
                 </div>
+            
+            <p style="color: #666; margin: 25px 0 15px;">または...</p>
+
+            <div>
+                <label for="file-input" class="file-label">
+                    📁 ローカルの問題ファイル（JSON）を選択
+                </label>
+                <input type="file" id="file-input" accept=".json">
             </div>
             
             <div id="loading" class="loading hidden">
@@ -335,10 +321,9 @@
                 読み込み中...
             </div>
             
-            <button class="start-btn" id="start-btn" disabled>クイズを始める</button>
+            <button class="start-btn" id="start-btn" disabled>クイズを選択してください</button>
         </div>
         
-        <!-- クイズ画面 -->
         <div id="quiz-screen" class="hidden">
             <div class="question-counter" id="question-counter"></div>
             <div class="progress">
@@ -353,12 +338,11 @@
             </div>
         </div>
         
-        <!-- 結果画面 -->
         <div id="result-screen" class="result-container hidden">
             <h1>🎉 お疲れさまでした！</h1>
             <div class="score" id="score"></div>
             <p class="score-text" id="score-text"></p>
-            <button class="restart-btn" id="restart-btn">もう一度挑戦</button>
+            <button class="restart-btn" id="restart-btn">他のクイズに挑戦</button>
         </div>
     </div>
     
@@ -385,40 +369,67 @@
         const scoreTextEl = document.getElementById('score-text');
         const restartBtn = document.getElementById('restart-btn');
         const loadingEl = document.getElementById('loading');
-        
-        // GitHubから問題を読み込む
-        async function loadFromGitHub() {
-            loadingEl.classList.remove('hidden');
+        const quizSelectionContainer = document.getElementById('quiz-selection-container');
+
+        // ページ読み込み時にクイズ一覧を取得してボタンを生成
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 相対パスで同じディレクトリのquestions.jsonを読み込む
-                const response = await fetch('./questions.json');
-                if (!response.ok) {
-                    throw new Error('ファイルが見つかりません');
-                }
-                const data = await response.json();
-                questions = data.questions;
-                startBtn.disabled = false;
-                startBtn.textContent = `クイズを始める（全${questions.length}問）`;
-                loadingEl.classList.add('hidden');
+                const response = await fetch('./quiz_list.json');
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const quizList = await response.json();
+                
+                quizList.forEach(quiz => {
+                    const button = document.createElement('button');
+                    button.className = 'option-btn';
+                    button.textContent = quiz.title;
+                    button.onclick = (event) => loadQuizFromUrl(quiz.path, event.currentTarget);
+                    quizSelectionContainer.appendChild(button);
+                });
             } catch (error) {
+                console.error('クイズ一覧(quiz_list.json)の読み込みに失敗しました:', error);
+                const errorMsg = document.createElement('p');
+                errorMsg.textContent = 'GitHub上の問題一覧の読み込みに失敗しました。';
+                errorMsg.style.color = 'red';
+                quizSelectionContainer.appendChild(errorMsg);
+            }
+        });
+
+        // URLからクイズを読み込む関数
+        async function loadQuizFromUrl(url, clickedButton) {
+            loadingEl.classList.remove('hidden');
+            startBtn.disabled = true;
+
+            // 他のボタンの選択状態を解除
+            document.querySelectorAll('.option-btn.selected').forEach(btn => btn.classList.remove('selected'));
+            // クリックされたボタンを選択状態にする
+            if (clickedButton) {
+                clickedButton.classList.add('selected');
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`ファイルが見つかりません: ${url}`);
+                const data = await response.json();
+                onQuestionsLoaded(data);
+            } catch (error) {
+                alert(`${url} の読み込みに失敗しました。ファイルが存在するか確認してください。`);
+                console.error(error);
+                if (clickedButton) clickedButton.classList.remove('selected');
+            } finally {
                 loadingEl.classList.add('hidden');
-                alert('questions.jsonの読み込みに失敗しました。同じディレクトリにquestions.jsonを配置してください。');
-                // デモ用のデフォルト問題を読み込む
-                loadDefaultQuestions();
             }
         }
-        
-        // ファイル読み込み処理
+
+        // ローカルファイル読み込み処理
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                document.querySelectorAll('.option-btn.selected').forEach(btn => btn.classList.remove('selected'));
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const data = JSON.parse(e.target.result);
-                        questions = data.questions;
-                        startBtn.disabled = false;
-                        startBtn.textContent = `クイズを始める（全${questions.length}問）`;
+                        onQuestionsLoaded(data);
                     } catch (error) {
                         alert('JSONファイルの読み込みに失敗しました。正しい形式のファイルを選択してください。');
                     }
@@ -427,57 +438,25 @@
             }
         });
         
-        // デフォルトの問題セット
-        function loadDefaultQuestions() {
-            questions = [
-                {
-                    id: 1,
-                    question: "次の微分方程式を解け：<br>$$\\frac{dy}{dx} = 2x$$",
-                    choices: [
-                        "$$y = x^2 + C$$",
-                        "$$y = 2x^2 + C$$",
-                        "$$y = \\frac{x^2}{2} + C$$",
-                        "$$y = 2x + C$$",
-                        "わからない"
-                    ],
-                    correct: 0,
-                    explanation: "両辺を積分すると：<br>$$\\int \\frac{dy}{dx} dx = \\int 2x dx$$<br>より $$y = x^2 + C$$ となります。"
-                },
-                {
-                    id: 2,
-                    question: "次の定積分の値を求めよ：<br>$$\\int_0^\\pi \\sin x \\, dx$$",
-                    choices: [
-                        "$$0$$",
-                        "$$1$$",
-                        "$$2$$",
-                        "$$\\pi$$",
-                        "わからない"
-                    ],
-                    correct: 2,
-                    explanation: "$$\\int_0^\\pi \\sin x \\, dx = \\left[-\\cos x\\right]_0^\\pi = -\\cos\\pi + \\cos 0 = -(-1) + 1 = 2$$"
-                },
-                {
-                    id: 3,
-                    question: "次の極限値を求めよ：<br>$$\\lim_{x \\to 0} \\frac{\\sin x}{x}$$",
-                    choices: [
-                        "$$0$$",
-                        "$$1$$",
-                        "$$\\infty$$",
-                        "存在しない",
-                        "わからない"
-                    ],
-                    correct: 1,
-                    explanation: "これは有名な極限で、ロピタルの定理を使うか、または $$\\sin x$$ のテイラー展開から<br>$$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$ となります。"
-                }
-            ];
+        // 共通化：問題が読み込まれた後の処理
+        function onQuestionsLoaded(data) {
+            if (!data.questions || !Array.isArray(data.questions)) {
+                alert('JSONファイルの形式が正しくありません。"questions"というキーの配列が必要です。');
+                return;
+            }
+            questions = data.questions;
             startBtn.disabled = false;
-            startBtn.textContent = `デモ版を始める（全${questions.length}問）`;
+            startBtn.textContent = `クイズを始める（全${questions.length}問）`;
         }
-        
+
         // クイズ開始
         startBtn.addEventListener('click', startQuiz);
         
         function startQuiz() {
+            if (questions.length === 0) {
+                alert('問題が読み込まれていません。');
+                return;
+            }
             currentQuestionIndex = 0;
             correctAnswers = 0;
             startScreen.classList.add('hidden');
@@ -491,69 +470,60 @@
             isAnswered = false;
             const question = questions[currentQuestionIndex];
             
-            // 進捗表示
             questionCounter.textContent = `問題 ${currentQuestionIndex + 1} / ${questions.length}`;
-            progressBar.style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
+            progressBar.style.width = `${((currentQuestionIndex) / questions.length) * 100}%`;
             
-            // 問題文表示
             questionEl.innerHTML = question.question;
             
-            // 選択肢表示
             choicesEl.innerHTML = '';
             question.choices.forEach((choice, index) => {
                 const button = document.createElement('button');
                 button.className = 'choice-btn';
                 button.innerHTML = choice;
-                button.addEventListener('click', () => selectChoice(index));
+                button.addEventListener('click', () => selectChoice(index, button));
                 choicesEl.appendChild(button);
             });
             
-            // 解説とボタンを非表示
             explanationEl.classList.add('hidden');
             nextBtn.classList.add('hidden');
             
-            // MathJaxで数式を再レンダリング
+            setTimeout(() => {
+                progressBar.style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
+            }, 100);
+
             if (window.MathJax) {
                 MathJax.typesetPromise();
             }
         }
         
         // 選択肢選択処理
-        function selectChoice(selectedIndex) {
+        function selectChoice(selectedIndex, selectedButton) {
             if (isAnswered) return;
             
             isAnswered = true;
             const question = questions[currentQuestionIndex];
-            const buttons = choicesEl.querySelectorAll('.choice-btn');
-            
-            // 「わからない」を選択した場合は必ず不正解
-            const isCorrect = selectedIndex === question.correct && question.choices[selectedIndex] !== "わからない";
+            const isCorrect = selectedIndex === question.correct;
             
             if (isCorrect) {
                 correctAnswers++;
-                buttons[selectedIndex].classList.add('correct');
-                // 正解の場合は即座に次の問題へ
-                setTimeout(() => {
-                    nextQuestion();
-                }, 1200);
+                selectedButton.classList.add('correct');
+                setTimeout(nextQuestion, 1200);
             } else {
-                buttons[selectedIndex].classList.add('incorrect');
-                buttons[question.correct].classList.add('correct');
+                selectedButton.classList.add('incorrect');
+                if (question.correct < question.choices.length) {
+                    choicesEl.children[question.correct].classList.add('correct');
+                }
                 
-                // 不正解の場合は解説を表示
-                explanationEl.innerHTML = question.explanation;
+                explanationEl.innerHTML = `<strong>解説:</strong><br>${question.explanation}`;
                 explanationEl.classList.remove('hidden');
                 nextBtn.classList.remove('hidden');
                 
-                // MathJaxで数式を再レンダリング
                 if (window.MathJax) {
                     MathJax.typesetPromise();
                 }
             }
             
-            // 選択肢を無効化
-            buttons.forEach(btn => {
-                btn.style.cursor = 'default';
+            Array.from(choicesEl.children).forEach(btn => {
                 btn.style.pointerEvents = 'none';
             });
         }
@@ -589,13 +559,17 @@
                 message = '復習が必要かもしれません。もう一度挑戦してみましょう！💡';
             }
             
-            scoreTextEl.textContent = `正答率: ${percentage}% - ${message}`;
+            scoreTextEl.innerHTML = `正答率: <strong>${percentage}%</strong><br>${message}`;
         }
         
         // リスタート
         restartBtn.addEventListener('click', () => {
             resultScreen.classList.add('hidden');
             startScreen.classList.remove('hidden');
+            questions = [];
+            startBtn.disabled = true;
+            startBtn.textContent = 'クイズを選択してください';
+            document.querySelectorAll('.option-btn.selected').forEach(btn => btn.classList.remove('selected'));
         });
     </script>
 </body>
