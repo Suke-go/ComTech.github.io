@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スキマ時間クイズ - 通信工学</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            transition: transform 0.3s ease;
+        }
+        
+        .container:hover {
+            transform: translateY(-5px);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .question-container {
+            margin-bottom: 30px;
+        }
+        
+        .question {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 30px;
+            line-height: 1.8;
+            text-align: center;
+        }
+        
+        .question .MathJax {
+            font-size: 1.4rem !important;
+        }
+        
+        .progress {
+            background: #e0e0e0;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .choice-btn {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            padding: 20px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+        
+        .choice-btn:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+            transform: translateX(5px);
+        }
+        
+        .choice-btn.correct {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+            animation: correctPulse 0.5s ease;
+        }
+        
+        @keyframes correctPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .choice-btn.incorrect {
+            background: #f44336;
+            color: white;
+            border-color: #f44336;
+            animation: shake 0.5s ease;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .explanation {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            text-align: center;
+        }
+        
+        .next-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .next-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .result-container {
+            text-align: center;
+        }
+        
+        .score {
+            font-size: 3.5rem;
+            color: #667eea;
+            margin: 30px 0;
+            font-weight: bold;
+        }
+        
+        .score-text {
+            font-size: 1.3rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .restart-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .restart-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .question-counter {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .start-screen {
+            text-align: center;
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 20px 50px;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 30px;
+        }
+        
+        .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+        
+        .file-options {
+            margin: 30px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .option-btn {
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+        
+        .option-btn:hover {
+            background: #e8e8ff;
+            border-color: #667eea;
+        }
+        
+        .file-label {
+            background: #f5f5f5;
+            border: 2px dashed #667eea;
+            padding: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: block;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .file-label:hover {
+            background: #e8e8ff;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            margin: 20px 0;
+        }
+        
+        .emoji {
+            font-size: 2rem;
+            margin: 10px;
+        }
+        
+        /* 数式の見た目を改善 */
+        .MathJax {
+            color: #333;
+        }
+        
+        .choice-btn .MathJax {
+            font-size: 1.2rem !important;
+        }
+        
+        .explanation .MathJax {
+            font-size: 1.2rem !important;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- スタート画面 -->
+        <div id="start-screen" class="start-screen">
+            <h1>📚 スキマ時間クイズ</h1>
+            <p class="subtitle">10分で効率的に数学を学習しよう！</p>
+            
+            <div class="file-options">
+                <button class="option-btn" onclick="loadFromGitHub()">
+                    📦 GitHub上の問題を読み込む<br>
+                    <small style="color: #666; font-size: 0.9rem;">questions.json</small>
+                </button>
+                
+                <div>
+                    <label for="file-input" class="file-label">
+                        📁 ローカルの問題ファイル（JSON）を選択
+                    </label>
+                    <input type="file" id="file-input" accept=".json">
+                </div>
+            </div>
+            
+            <div id="loading" class="loading hidden">
+                <div class="emoji">⏳</div>
+                読み込み中...
+            </div>
+            
+            <button class="start-btn" id="start-btn" disabled>クイズを始める</button>
+        </div>
+        
+        <!-- クイズ画面 -->
+        <div id="quiz-screen" class="hidden">
+            <div class="question-counter" id="question-counter"></div>
+            <div class="progress">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            
+            <div class="question-container">
+                <div class="question" id="question"></div>
+                <div class="choices" id="choices"></div>
+                <div class="explanation hidden" id="explanation"></div>
+                <button class="next-btn hidden" id="next-btn">次の問題へ →</button>
+            </div>
+        </div>
+        
+        <!-- 結果画面 -->
+        <div id="result-screen" class="result-container hidden">
+            <h1>🎉 お疲れさまでした！</h1>
+            <div class="score" id="score"></div>
+            <p class="score-text" id="score-text"></p>
+            <button class="restart-btn" id="restart-btn">もう一度挑戦</button>
+        </div>
+    </div>
+    
+    <script>
+        // アプリケーションの状態管理
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let correctAnswers = 0;
+        let isAnswered = false;
+        
+        // DOM要素の取得
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const fileInput = document.getElementById('file-input');
+        const startBtn = document.getElementById('start-btn');
+        const questionCounter = document.getElementById('question-counter');
+        const progressBar = document.getElementById('progress-bar');
+        const questionEl = document.getElementById('question');
+        const choicesEl = document.getElementById('choices');
+        const explanationEl = document.getElementById('explanation');
+        const nextBtn = document.getElementById('next-btn');
+        const scoreEl = document.getElementById('score');
+        const scoreTextEl = document.getElementById('score-text');
+        const restartBtn = document.getElementById('restart-btn');
+        const loadingEl = document.getElementById('loading');
+        
+        // GitHubから問題を読み込む
+        async function loadFromGitHub() {
+            loadingEl.classList.remove('hidden');
+            try {
+                // 相対パスで同じディレクトリのquestions.jsonを読み込む
+                const response = await fetch('./questions.json');
+                if (!response.ok) {
+                    throw new Error('ファイルが見つかりません');
+                }
+                const data = await response.json();
+                questions = data.questions;
+                startBtn.disabled = false;
+                startBtn.textContent = `クイズを始める（全${questions.length}問）`;
+                loadingEl.classList.add('hidden');
+            } catch (error) {
+                loadingEl.classList.add('hidden');
+                alert('questions.jsonの読み込みに失敗しました。同じディレクトリにquestions.jsonを配置してください。');
+                // デモ用のデフォルト問題を読み込む
+                loadDefaultQuestions();
+            }
+        }
+        
+        // ファイル読み込み処理
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        questions = data.questions;
+                        startBtn.disabled = false;
+                        startBtn.textContent = `クイズを始める（全${questions.length}問）`;
+                    } catch (error) {
+                        alert('JSONファイルの読み込みに失敗しました。正しい形式のファイルを選択してください。');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+        
+        // デフォルトの問題セット
+        function loadDefaultQuestions() {
+            questions = [
+                {
+                    id: 1,
+                    question: "次の微分方程式を解け：<br>$$\\frac{dy}{dx} = 2x$$",
+                    choices: [
+                        "$$y = x^2 + C$$",
+                        "$$y = 2x^2 + C$$",
+                        "$$y = \\frac{x^2}{2} + C$$",
+                        "$$y = 2x + C$$",
+                        "わからない"
+                    ],
+                    correct: 0,
+                    explanation: "両辺を積分すると：<br>$$\\int \\frac{dy}{dx} dx = \\int 2x dx$$<br>より $$y = x^2 + C$$ となります。"
+                },
+                {
+                    id: 2,
+                    question: "次の定積分の値を求めよ：<br>$$\\int_0^\\pi \\sin x \\, dx$$",
+                    choices: [
+                        "$$0$$",
+                        "$$1$$",
+                        "$$2$$",
+                        "$$\\pi$$",
+                        "わからない"
+                    ],
+                    correct: 2,
+                    explanation: "$$\\int_0^\\pi \\sin x \\, dx = \\left[-\\cos x\\right]_0^\\pi = -\\cos\\pi + \\cos 0 = -(-1) + 1 = 2$$"
+                },
+                {
+                    id: 3,
+                    question: "次の極限値を求めよ：<br>$$\\lim_{x \\to 0} \\frac{\\sin x}{x}$$",
+                    choices: [
+                        "$$0$$",
+                        "$$1$$",
+                        "$$\\infty$$",
+                        "存在しない",
+                        "わからない"
+                    ],
+                    correct: 1,
+                    explanation: "これは有名な極限で、ロピタルの定理を使うか、または $$\\sin x$$ のテイラー展開から<br>$$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$ となります。"
+                }
+            ];
+            startBtn.disabled = false;
+            startBtn.textContent = `デモ版を始める（全${questions.length}問）`;
+        }
+        
+        // クイズ開始
+        startBtn.addEventListener('click', startQuiz);
+        
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            correctAnswers = 0;
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            resultScreen.classList.add('hidden');
+            showQuestion();
+        }
+        
+        // 問題表示
+        function showQuestion() {
+            isAnswered = false;
+            const question = questions[currentQuestionIndex];
+            
+            // 進捗表示
+            questionCounter.textContent = `問題 ${currentQuestionIndex + 1} / ${questions.length}`;
+            progressBar.style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
+            
+            // 問題文表示
+            questionEl.innerHTML = question.question;
+            
+            // 選択肢表示
+            choicesEl.innerHTML = '';
+            question.choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.className = 'choice-btn';
+                button.innerHTML = choice;
+                button.addEventListener('click', () => selectChoice(index));
+                choicesEl.appendChild(button);
+            });
+            
+            // 解説とボタンを非表示
+            explanationEl.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            
+            // MathJaxで数式を再レンダリング
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+        
+        // 選択肢選択処理
+        function selectChoice(selectedIndex) {
+            if (isAnswered) return;
+            
+            isAnswered = true;
+            const question = questions[currentQuestionIndex];
+            const buttons = choicesEl.querySelectorAll('.choice-btn');
+            
+            // 「わからない」を選択した場合は必ず不正解
+            const isCorrect = selectedIndex === question.correct && question.choices[selectedIndex] !== "わからない";
+            
+            if (isCorrect) {
+                correctAnswers++;
+                buttons[selectedIndex].classList.add('correct');
+                // 正解の場合は即座に次の問題へ
+                setTimeout(() => {
+                    nextQuestion();
+                }, 1200);
+            } else {
+                buttons[selectedIndex].classList.add('incorrect');
+                buttons[question.correct].classList.add('correct');
+                
+                // 不正解の場合は解説を表示
+                explanationEl.innerHTML = question.explanation;
+                explanationEl.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+                
+                // MathJaxで数式を再レンダリング
+                if (window.MathJax) {
+                    MathJax.typesetPromise();
+                }
+            }
+            
+            // 選択肢を無効化
+            buttons.forEach(btn => {
+                btn.style.cursor = 'default';
+                btn.style.pointerEvents = 'none';
+            });
+        }
+        
+        // 次の問題へ
+        nextBtn.addEventListener('click', nextQuestion);
+        
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                showQuestion();
+            } else {
+                showResult();
+            }
+        }
+        
+        // 結果表示
+        function showResult() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            
+            const percentage = Math.round((correctAnswers / questions.length) * 100);
+            scoreEl.textContent = `${correctAnswers} / ${questions.length}`;
+            
+            let message = '';
+            if (percentage === 100) {
+                message = '完璧です！素晴らしい成績です！🎯';
+            } else if (percentage >= 80) {
+                message = 'とても良い成績です！あと少しで完璧！💪';
+            } else if (percentage >= 60) {
+                message = '合格ラインです！もう少し頑張りましょう！📈';
+            } else {
+                message = '復習が必要かもしれません。もう一度挑戦してみましょう！💡';
+            }
+            
+            scoreTextEl.textContent = `正答率: ${percentage}% - ${message}`;
+        }
+        
+        // リスタート
+        restartBtn.addEventListener('click', () => {
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
